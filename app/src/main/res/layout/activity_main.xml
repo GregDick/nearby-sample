@@ -4,18 +4,32 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <Button
-        android:id="@+id/broadcast_button"
+    <Switch
+        android:id="@+id/broadcast_switch"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="10dp"
         android:text="@string/broadcast_connection"/>
 
-    <Button
-        android:id="@+id/discover_button"
+    <Switch
+        android:id="@+id/discover_switch"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="10dp"
         android:text="@string/discover_connection"/>
+
+    <EditText
+        android:id="@+id/message_edit_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Send a message"
+        android:visibility="invisible"/>
+
+    <TextView
+        android:id="@+id/message_board"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="22sp"
+        android:visibility="invisible"/>
 
 </LinearLayout>

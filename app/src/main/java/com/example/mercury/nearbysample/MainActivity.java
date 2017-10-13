@@ -1,17 +1,19 @@
 package com.example.mercury.nearbysample;
 
+import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
-import android.widget.Button;
+import android.view.View;
+import android.widget.CompoundButton;
+import android.widget.EditText;
+import android.widget.Switch;
+import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.api.GoogleApi;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.common.api.ResultCallbacks;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.nearby.Nearby;
 import com.google.android.gms.nearby.connection.AdvertisingOptions;
@@ -23,24 +25,48 @@ import com.google.android.gms.nearby.connection.ConnectionsStatusCodes;
 import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo;
 import com.google.android.gms.nearby.connection.DiscoveryOptions;
 import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback;
+import com.google.android.gms.nearby.connection.Payload;
 import com.google.android.gms.nearby.connection.PayloadCallback;
+import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
-import butterknife.OnClick;
 
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener{
 
     private static final String TAG = MainActivity.class.getSimpleName();
-    private String SERVICE_ID;
+    private String SERVICE_ID = "com.example.mercury.nearbysample";
 
     private GoogleApiClient mGoogleApiClient;
 
-    private PayloadCallback mPayloadCallback;
+
+    @BindView(R.id.broadcast_switch)
+    Switch broadcastSwitch;
+
+    @BindView(R.id.discover_switch)
+    Switch discoverSwitch;
+
+    @BindView(R.id.message_edit_text)
+    EditText messageEditText;
+
+    @BindView(R.id.message_board)
+    TextView messageBoard;
 
     //region callbacks
+    private final PayloadCallback mPayloadCallback = new PayloadCallback() {
+        @Override
+        public void onPayloadReceived(String endpointId, Payload payload) {
+            Log.d(TAG, "onPayloadReceived endpointId: " + endpointId);
+        }
+
+        @Override
+        public void onPayloadTransferUpdate(String endpointId, PayloadTransferUpdate payloadTransferUpdate) {
+            Log.d(TAG, "onPayloadTransferUpdate endpointId: " + endpointId + "update: " + payloadTransferUpdate.toString());
+        }
+    };
+
     private final ConnectionLifecycleCallback mConnectionLifecycleCallback = new ConnectionLifecycleCallback() {
         @Override
         public void onConnectionInitiated(String endpointId, ConnectionInfo connectionInfo) {
@@ -53,10 +79,12 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             switch (connectionResolution.getStatus().getStatusCode()){
                 case ConnectionsStatusCodes.STATUS_OK:
                     Log.d(TAG, "onConnectionResult: STATUS_OK. FINALLY CONNECTED");
+                    showMessageBoard();
                     break;
 
                 case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
                     Log.d(TAG, "onConnectionResult: STATUS_CONNECTION_REJECTED");
+                    hideMessageBoard();
                     break;
             }
         }
@@ -69,20 +97,20 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     private final EndpointDiscoveryCallback mEndpointDiscoveryCallback = new EndpointDiscoveryCallback() {
         @Override
-        public void onEndpointFound(String s, DiscoveredEndpointInfo discoveredEndpointInfo) {
+        public void onEndpointFound(String endpointId, DiscoveredEndpointInfo discoveredEndpointInfo) {
             String name = "the discoverer";
             Nearby.Connections.requestConnection(mGoogleApiClient,
-                    SERVICE_ID,
                     name,
+                    endpointId,
                     mConnectionLifecycleCallback)
                     .setResultCallback(new ResultCallback<Status>() {
                         @Override
                         public void onResult(@NonNull Status status) {
                             if (status.isSuccess()){
-                                Log.d(TAG, "onResult: Success. successfully _requested_ a connection. Still need both parties to accept");
+                                Log.d(TAG, "onEndpointFound: Success. successfully _requested_ a connection. Still need both parties to accept");
                             }
                             else {
-                                Log.e(TAG, "onResult: Failure. failed to request a connection");
+                                Log.e(TAG, "onEndpointFound: Failure. failed to request a connection");
                             }
                         }
                     });
@@ -106,83 +134,104 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
                 .addApi(Nearby.CONNECTIONS_API)
+                .enableAutoManage(this, this)
                 .build();
 
-        SERVICE_ID  = getPackageName();
-    }
+        broadcastSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean switchedOn) {
+                if (switchedOn){
+                    startAdvertising();
+                }
+                else {
+                    stopAdvertising();
+                }
+            }
+        });
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        mGoogleApiClient.connect();
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        if (mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
-            mGoogleApiClient.disconnect();
-        }
+        discoverSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean switchedOn) {
+                if (switchedOn){
+                    startDiscovering();
+                }
+                else {
+                    stopDiscovering();
+                }
+            }
+        });
     }
     //endregion
 
     @Override
-    public void onConnected(@Nullable Bundle bundle) {
-
-    }
+    public void onConnected(@Nullable Bundle bundle) {}
 
     @Override
-    public void onConnectionSuspended(int i) {
-
-    }
+    public void onConnectionSuspended(int i) {}
 
     @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {}
 
-    }
-
-    @OnClick(R.id.broadcast_button)
-    void startAdvertising(){
+    void startAdvertising() {
         Nearby.Connections.startAdvertising(mGoogleApiClient,
-                SERVICE_ID,
                 getUserNickname(),
+                SERVICE_ID,
                 mConnectionLifecycleCallback,
                 new AdvertisingOptions(Strategy.P2P_CLUSTER))
-                .setResultCallback(new ResultCallbacks<Connections.StartAdvertisingResult>() {
+                .setResultCallback(new ResultCallback<Connections.StartAdvertisingResult>() {
                     @Override
-                    public void onSuccess(@NonNull Connections.StartAdvertisingResult startAdvertisingResult) {
-                        //todo: now we're advertising
-                        Log.d(TAG, "startAdvertising onSuccess: " + startAdvertisingResult.toString());
-                    }
-
-                    @Override
-                    public void onFailure(@NonNull Status status) {
-                        Log.e(TAG, "startAdvertising onFailure: " + status.getStatusMessage());
+                    public void onResult(@NonNull Connections.StartAdvertisingResult startAdvertisingResult) {
+                        if (startAdvertisingResult.getStatus().isSuccess()){
+                            //todo: now we're advertising
+                            Log.d(TAG, "startAdvertising onSuccess: " + startAdvertisingResult.toString());
+                        }
+                        else {
+                            Log.e(TAG, "startAdvertising onFailure: " + startAdvertisingResult.getStatus().getStatusMessage());
+                        }
                     }
                 });
     }
 
-    @OnClick(R.id.discover_button)
+    void stopAdvertising(){
+        Nearby.Connections.stopAdvertising(mGoogleApiClient);
+        Nearby.Connections.stopAllEndpoints(mGoogleApiClient);
+    }
+
     void startDiscovering() {
         Nearby.Connections.startDiscovery(mGoogleApiClient,
                 SERVICE_ID,
                 mEndpointDiscoveryCallback,
                 new DiscoveryOptions(Strategy.P2P_CLUSTER))
-                .setResultCallback(new ResultCallbacks<Status>() {
+                .setResultCallback(new ResultCallback<Status>() {
                     @Override
-                    public void onSuccess(@NonNull Status status) {
-                        //todo: now we're detectin
-                        Log.d(TAG, "startDiscovering onSuccess: " + status.getStatusMessage());
-                    }
-
-                    @Override
-                    public void onFailure(@NonNull Status status) {
-                        Log.e(TAG, "startDiscovering onFailure: " + status.getStatusMessage());
+                    public void onResult(@NonNull Status status) {
+                        if (status.isSuccess()){
+                            //todo: now we're detectin
+                            Log.d(TAG, "startDiscovering onSuccess: " + status.toString());
+                        }
+                        else {
+                            Log.e(TAG, "startDiscovering onFailure: " + status.getStatusMessage());
+                        }
                     }
                 });
     }
 
+    void stopDiscovering(){
+        Nearby.Connections.stopDiscovery(mGoogleApiClient);
+        Nearby.Connections.stopAllEndpoints(mGoogleApiClient);
+    }
+
     private String getUserNickname() {
         return "Mr. Poopy Butthole";
+    }
+
+    private void hideMessageBoard() {
+        messageEditText.setVisibility(View.INVISIBLE);
+        messageBoard.setVisibility(View.INVISIBLE);
+    }
+
+    private void showMessageBoard() {
+        messageEditText.setVisibility(View.VISIBLE);
+        messageBoard.setVisibility(View.VISIBLE);
     }
 }
