@@ -5,7 +5,9 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Switch;
@@ -30,8 +32,13 @@ import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import butterknife.OnClick;
 
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener{
@@ -41,6 +48,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     private GoogleApiClient mGoogleApiClient;
 
+    private Map<String, Endpoint> pendingConnections = new HashMap<>();
+
+    private Map<String, Endpoint> connectedEndpoints = new HashMap<>();
 
     @BindView(R.id.broadcast_switch)
     Switch broadcastSwitch;
@@ -54,11 +64,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     @BindView(R.id.message_board)
     TextView messageBoard;
 
+    @BindView(R.id.send_message_button)
+    Button sendMessageButton;
+
     //region callbacks
     private final PayloadCallback mPayloadCallback = new PayloadCallback() {
         @Override
         public void onPayloadReceived(String endpointId, Payload payload) {
             Log.d(TAG, "onPayloadReceived endpointId: " + endpointId);
+            messageBoard.setText(new String(payload.asBytes()));
         }
 
         @Override
@@ -71,19 +85,23 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         @Override
         public void onConnectionInitiated(String endpointId, ConnectionInfo connectionInfo) {
             Log.d(TAG, "onConnectionInitiated: accepting connection");
+            Endpoint endpoint = new Endpoint(endpointId, connectionInfo.getEndpointName());
+            pendingConnections.put(endpointId, endpoint);
             Nearby.Connections.acceptConnection(mGoogleApiClient, endpointId, mPayloadCallback);
         }
 
         @Override
-        public void onConnectionResult(String s, ConnectionResolution connectionResolution) {
+        public void onConnectionResult(String endpointId, ConnectionResolution connectionResolution) {
             switch (connectionResolution.getStatus().getStatusCode()){
                 case ConnectionsStatusCodes.STATUS_OK:
                     Log.d(TAG, "onConnectionResult: STATUS_OK. FINALLY CONNECTED");
+                    connectedEndpoints.put(endpointId, pendingConnections.remove(endpointId));
                     showMessageBoard();
                     break;
 
                 case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
                     Log.d(TAG, "onConnectionResult: STATUS_CONNECTION_REJECTED");
+                    pendingConnections.remove(endpointId);
                     hideMessageBoard();
                     break;
             }
@@ -144,7 +162,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     startAdvertising();
                 }
                 else {
-                    stopAdvertising();
+                    Nearby.Connections.stopAdvertising(mGoogleApiClient);
                 }
             }
         });
@@ -156,11 +174,37 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     startDiscovering();
                 }
                 else {
-                    stopDiscovering();
+                    Nearby.Connections.stopDiscovery(mGoogleApiClient);
                 }
             }
         });
+
+        sendMessageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String message = String.valueOf(messageEditText.getText());
+                Payload payload = Payload.fromBytes(message.getBytes());
+                ArrayList endpointList = new ArrayList(connectedEndpoints.keySet());
+                Nearby.Connections.sendPayload(mGoogleApiClient, endpointList, payload);
+            }
+        });
+
+        messageEditText.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View view, int i, KeyEvent keyEvent) {
+                sendMessageButton.setEnabled(!messageEditText.getText().toString().isEmpty());
+                return false;
+            }
+        });
     }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        resetConnections();
+    }
+
     //endregion
 
     @Override
@@ -192,11 +236,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 });
     }
 
-    void stopAdvertising(){
-        Nearby.Connections.stopAdvertising(mGoogleApiClient);
-        Nearby.Connections.stopAllEndpoints(mGoogleApiClient);
-    }
-
     void startDiscovering() {
         Nearby.Connections.startDiscovery(mGoogleApiClient,
                 SERVICE_ID,
@@ -216,9 +255,14 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 });
     }
 
-    void stopDiscovering(){
-        Nearby.Connections.stopDiscovery(mGoogleApiClient);
+    @OnClick(R.id.reset_button)
+    void resetConnections(){
         Nearby.Connections.stopAllEndpoints(mGoogleApiClient);
+        hideMessageBoard();
+        pendingConnections.clear();
+        connectedEndpoints.clear();
+        discoverSwitch.setChecked(false);
+        broadcastSwitch.setChecked(false);
     }
 
     private String getUserNickname() {
@@ -228,10 +272,12 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private void hideMessageBoard() {
         messageEditText.setVisibility(View.INVISIBLE);
         messageBoard.setVisibility(View.INVISIBLE);
+        sendMessageButton.setVisibility(View.INVISIBLE);
     }
 
     private void showMessageBoard() {
         messageEditText.setVisibility(View.VISIBLE);
         messageBoard.setVisibility(View.VISIBLE);
+        sendMessageButton.setVisibility(View.VISIBLE);
     }
 }
