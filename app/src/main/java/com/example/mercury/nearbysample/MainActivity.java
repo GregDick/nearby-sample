@@ -1,8 +1,14 @@
 package com.example.mercury.nearbysample;
 
+import android.Manifest;
+import android.content.DialogInterface;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -44,6 +50,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         GoogleApiClient.OnConnectionFailedListener{
 
     private static final String TAG = MainActivity.class.getSimpleName();
+    private static final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1;
     private String SERVICE_ID = "com.example.mercury.nearbysample";
 
     private GoogleApiClient mGoogleApiClient;
@@ -196,6 +203,44 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 return false;
             }
         });
+        
+        handlePermissions();
+    }
+
+    private void handlePermissions() {
+        // Here, thisActivity is the current activity
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) !=
+                PackageManager.PERMISSION_GRANTED) {
+
+
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
+                    MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION: {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    Log.d(TAG, "onRequestPermissionsResult: ACCESS_COARSE_LOCATION Success");
+
+                } else {
+                    new AlertDialog.Builder(this)
+                            .setMessage("This permission is required.")
+                            .setPositiveButton("Request again", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    handlePermissions();
+                                }
+                            })
+                            .show();
+                }
+            }
+        }
     }
 
     @Override
@@ -246,7 +291,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     public void onResult(@NonNull Status status) {
                         if (status.isSuccess()){
                             //todo: now we're detectin
-                            Log.d(TAG, "startDiscovering onSuccess: " + status.toString());
+                            Log.d(TAG, "startDiascovering onSuccess: " + status.toString());
                         }
                         else {
                             Log.e(TAG, "startDiscovering onFailure: " + status.getStatusMessage());
@@ -256,13 +301,17 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     }
 
     @OnClick(R.id.reset_button)
-    void resetConnections(){
-        Nearby.Connections.stopAllEndpoints(mGoogleApiClient);
+    void resetConnections() {
+        if (mGoogleApiClient.isConnected()) {
+            Nearby.Connections.stopAllEndpoints(mGoogleApiClient);
+        }
         hideMessageBoard();
         pendingConnections.clear();
         connectedEndpoints.clear();
         discoverSwitch.setChecked(false);
         broadcastSwitch.setChecked(false);
+        messageBoard.setText("");
+        messageEditText.setText("");
     }
 
     private String getUserNickname() {
