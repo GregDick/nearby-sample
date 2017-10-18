@@ -10,6 +10,9 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.text.Editable;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -17,7 +20,6 @@ import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Switch;
-import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -38,6 +40,7 @@ import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -59,6 +62,12 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     private Map<String, Endpoint> connectedEndpoints = new HashMap<>();
 
+    private ArrayList<MessageModel> messages = new ArrayList<>();
+
+    private MessageAdapter messageAdapter;
+
+    private String username;
+
     @BindView(R.id.broadcast_switch)
     Switch broadcastSwitch;
 
@@ -68,8 +77,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     @BindView(R.id.message_edit_text)
     EditText messageEditText;
 
-    @BindView(R.id.message_board)
-    TextView messageBoard;
+    @BindView(R.id.message_recycler)
+    RecyclerView messageRecycler;
 
     @BindView(R.id.send_message_button)
     Button sendMessageButton;
@@ -79,7 +88,13 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         @Override
         public void onPayloadReceived(String endpointId, Payload payload) {
             Log.d(TAG, "onPayloadReceived endpointId: " + endpointId);
-            messageBoard.setText(new String(payload.asBytes()));
+            MessageModel incomingMessage = MessageModel.empty();
+            try {
+                incomingMessage = MessageModel.convertFromBytes(payload.asBytes());
+            } catch (IOException | ClassNotFoundException e) {
+                Log.e(TAG, "onPayloadReceived: failure. Could not convert payload to message");
+            }
+            messages.add(incomingMessage);
         }
 
         @Override
@@ -104,6 +119,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     Log.d(TAG, "onConnectionResult: STATUS_OK. FINALLY CONNECTED");
                     connectedEndpoints.put(endpointId, pendingConnections.remove(endpointId));
                     showMessageBoard();
+                    requestName();
                     break;
 
                 case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
@@ -162,6 +178,19 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 .enableAutoManage(this, this)
                 .build();
 
+        initViews();
+        handlePermissions();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        resetConnections();
+    }
+    //endregion
+
+    private void initViews() {
         broadcastSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean switchedOn) {
@@ -190,7 +219,13 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             @Override
             public void onClick(View view) {
                 String message = String.valueOf(messageEditText.getText());
-                Payload payload = Payload.fromBytes(message.getBytes());
+                MessageModel messageModel = new MessageModel(username, message);
+                Payload payload = null;
+                try {
+                    payload = Payload.fromBytes(MessageModel.convertToBytes(messageModel));
+                } catch (IOException e) {
+                    Log.e(TAG, "Send message failure: Could not convert message to bytes");
+                }
                 ArrayList endpointList = new ArrayList(connectedEndpoints.keySet());
                 Nearby.Connections.sendPayload(mGoogleApiClient, endpointList, payload);
             }
@@ -203,8 +238,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 return false;
             }
         });
-        
-        handlePermissions();
+
+        messageRecycler.setLayoutManager(new LinearLayoutManager(this));
+        messageAdapter = new MessageAdapter(messages);
+        messageRecycler.setAdapter(messageAdapter);
     }
 
     private void handlePermissions() {
@@ -244,15 +281,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-
-        resetConnections();
-    }
-
-    //endregion
-
-    @Override
     public void onConnected(@Nullable Bundle bundle) {}
 
     @Override
@@ -271,7 +299,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     @Override
                     public void onResult(@NonNull Connections.StartAdvertisingResult startAdvertisingResult) {
                         if (startAdvertisingResult.getStatus().isSuccess()){
-                            //todo: now we're advertising
                             Log.d(TAG, "startAdvertising onSuccess: " + startAdvertisingResult.toString());
                         }
                         else {
@@ -290,7 +317,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     @Override
                     public void onResult(@NonNull Status status) {
                         if (status.isSuccess()){
-                            //todo: now we're detectin
                             Log.d(TAG, "startDiascovering onSuccess: " + status.toString());
                         }
                         else {
@@ -310,23 +336,43 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         connectedEndpoints.clear();
         discoverSwitch.setChecked(false);
         broadcastSwitch.setChecked(false);
-        messageBoard.setText("");
+        //todo: clear message recycler
+//        messageRecycler.setText("");
         messageEditText.setText("");
     }
 
+    //helper methods
     private String getUserNickname() {
         return "Mr. Poopy Butthole";
     }
 
     private void hideMessageBoard() {
         messageEditText.setVisibility(View.INVISIBLE);
-        messageBoard.setVisibility(View.INVISIBLE);
+        messageRecycler.setVisibility(View.INVISIBLE);
         sendMessageButton.setVisibility(View.INVISIBLE);
     }
 
     private void showMessageBoard() {
         messageEditText.setVisibility(View.VISIBLE);
-        messageBoard.setVisibility(View.VISIBLE);
+        messageRecycler.setVisibility(View.VISIBLE);
         sendMessageButton.setVisibility(View.VISIBLE);
     }
+
+    private void requestName() {
+        final AlertDialog.Builder alert = new AlertDialog.Builder(this);
+        final EditText edittext = new EditText(this);
+        alert.setMessage("What's your name?");
+        alert.setTitle("Username");
+        alert.setView(edittext);
+
+        alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int whichButton) {
+                username = edittext.getText().toString();
+                dialog.dismiss();
+            }
+        });
+
+        alert.show();
+    }
+    //endregion
 }

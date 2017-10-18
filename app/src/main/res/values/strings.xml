@@ -2,4 +2,5 @@
     <string name="app_name">Nearby Sample</string>
     <string name="broadcast_connection">Broadcast Connection</string>
     <string name="discover_connection">Discover Connection</string>
+    <string name="message_sender">%s :</string>
 </resources>
