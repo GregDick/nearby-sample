@@ -83,6 +83,32 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     @BindView(R.id.send_message_button)
     Button sendMessageButton;
 
+    //region activity lifecycle
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        ButterKnife.bind(this);
+
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(Nearby.CONNECTIONS_API)
+                .enableAutoManage(this, this)
+                .build();
+
+        initViews();
+        handlePermissions();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.d(TAG, "onPause: activity paused");
+        resetConnections();
+    }
+    //endregion
+
     //region callbacks
     private final PayloadCallback mPayloadCallback = new PayloadCallback() {
         @Override
@@ -94,8 +120,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             } catch (IOException | ClassNotFoundException e) {
                 Log.e(TAG, "onPayloadReceived: failure. Could not convert payload to message");
             }
-            messages.add(incomingMessage);
-            messageAdapter.setMessageList(messages);
+            displayMessage(incomingMessage);
         }
 
         @Override
@@ -166,127 +191,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     };
     //endregion
 
-    //region activity lifecycle
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        ButterKnife.bind(this);
-
-        mGoogleApiClient = new GoogleApiClient.Builder(this)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .addApi(Nearby.CONNECTIONS_API)
-                .enableAutoManage(this, this)
-                .build();
-
-        initViews();
-        handlePermissions();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        Log.d(TAG, "onPause: activity paused");
-        resetConnections();
-    }
-    //endregion
-
-    private void initViews() {
-        broadcastSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton compoundButton, boolean switchedOn) {
-                if (switchedOn){
-                    startAdvertising();
-                }
-                else {
-                    Nearby.Connections.stopAdvertising(mGoogleApiClient);
-                }
-            }
-        });
-
-        discoverSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton compoundButton, boolean switchedOn) {
-                if (switchedOn){
-                    startDiscovering();
-                }
-                else {
-                    Nearby.Connections.stopDiscovery(mGoogleApiClient);
-                }
-            }
-        });
-
-        sendMessageButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                String message = String.valueOf(messageEditText.getText());
-                MessageModel messageModel = new MessageModel(username, message);
-                Payload payload = null;
-                try {
-                    payload = Payload.fromBytes(MessageModel.convertToBytes(messageModel));
-                } catch (IOException e) {
-                    Log.e(TAG, "Send message failure: Could not convert message to bytes");
-                }
-                ArrayList endpointList = new ArrayList(connectedEndpoints.keySet());
-                Nearby.Connections.sendPayload(mGoogleApiClient, endpointList, payload);
-            }
-        });
-
-        messageEditText.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
-
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                sendMessageButton.setEnabled(!messageEditText.getText().toString().isEmpty());
-            }
-
-            @Override
-            public void afterTextChanged(Editable editable) {}
-        });
-
-        messageRecycler.setLayoutManager(new LinearLayoutManager(this));
-        messageAdapter = new MessageAdapter(messages);
-        messageRecycler.setAdapter(messageAdapter);
-    }
-
-    private void handlePermissions() {
-        // Here, thisActivity is the current activity
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) !=
-                PackageManager.PERMISSION_GRANTED) {
-
-
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                    MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION);
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        switch (requestCode) {
-            case MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION: {
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
-                    Log.d(TAG, "onRequestPermissionsResult: ACCESS_COARSE_LOCATION Success");
-
-                } else {
-                    new AlertDialog.Builder(this)
-                            .setMessage("This permission is required.")
-                            .setPositiveButton("Request again", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialogInterface, int i) {
-                                    handlePermissions();
-                                }
-                            })
-                            .show();
-                }
-            }
-        }
-    }
-
+    //region connection methods
     @Override
     public void onConnected(@Nullable Bundle bundle) {}
 
@@ -332,6 +237,68 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     }
                 });
     }
+    //endregion
+
+    //region view methods
+    private void initViews() {
+        broadcastSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean switchedOn) {
+                if (switchedOn){
+                    startAdvertising();
+                }
+                else {
+                    Nearby.Connections.stopAdvertising(mGoogleApiClient);
+                }
+            }
+        });
+
+        discoverSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean switchedOn) {
+                if (switchedOn){
+                    startDiscovering();
+                }
+                else {
+                    Nearby.Connections.stopDiscovery(mGoogleApiClient);
+                }
+            }
+        });
+
+        sendMessageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String message = String.valueOf(messageEditText.getText());
+                MessageModel messageModel = new MessageModel(username, message);
+                displayMessage(messageModel);
+                Payload payload = null;
+                try {
+                    payload = Payload.fromBytes(MessageModel.convertToBytes(messageModel));
+                } catch (IOException e) {
+                    Log.e(TAG, "Send message failure: Could not convert message to bytes");
+                }
+                ArrayList endpointList = new ArrayList(connectedEndpoints.keySet());
+                Nearby.Connections.sendPayload(mGoogleApiClient, endpointList, payload);
+            }
+        });
+
+        messageEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                sendMessageButton.setEnabled(!messageEditText.getText().toString().isEmpty());
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {}
+        });
+
+        messageRecycler.setLayoutManager(new LinearLayoutManager(this));
+        messageAdapter = new MessageAdapter(messages);
+        messageRecycler.setAdapter(messageAdapter);
+    }
 
     @OnClick(R.id.reset_button)
     void resetConnections() {
@@ -347,8 +314,47 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         messageAdapter.setMessageList(messages);
         messageEditText.setText("");
     }
+    //endregion
 
-    //helper methods
+    //region permissions
+    private void handlePermissions() {
+        // Here, thisActivity is the current activity
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) !=
+                PackageManager.PERMISSION_GRANTED) {
+
+
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
+                    MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION: {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    Log.d(TAG, "onRequestPermissionsResult: ACCESS_COARSE_LOCATION Success");
+
+                } else {
+                    new AlertDialog.Builder(this)
+                            .setMessage("This permission is required.")
+                            .setPositiveButton("Request again", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    handlePermissions();
+                                }
+                            })
+                            .show();
+                }
+            }
+        }
+    }
+    //endregion
+
+    //region helper methods
     private String getUserNickname() {
         return "Mr. Poopy Butthole";
     }
@@ -363,6 +369,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         messageEditText.setVisibility(View.VISIBLE);
         messageRecycler.setVisibility(View.VISIBLE);
         sendMessageButton.setVisibility(View.VISIBLE);
+    }
+
+    private void displayMessage(MessageModel messageModel) {
+        messages.add(messageModel);
+        messageAdapter.setMessageList(messages);
     }
 
     private void requestName() {
