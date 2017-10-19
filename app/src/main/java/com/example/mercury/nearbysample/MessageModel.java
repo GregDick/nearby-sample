@@ -7,8 +7,9 @@ import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 
-public class MessageModel {
+public class MessageModel implements Serializable{
 
     private final String who;
     private final String text;

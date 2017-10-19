@@ -1,6 +1,7 @@
 package com.example.mercury.nearbysample;
 
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,8 +13,9 @@ import java.util.ArrayList;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
-public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageViewHolder>{
+public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageViewHolder> {
 
+    private static final String TAG = MessageAdapter.class.getSimpleName();
     private ArrayList<MessageModel> messageList;
 
     MessageAdapter(ArrayList<MessageModel> messages) {
@@ -31,12 +33,19 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     public void onBindViewHolder(MessageViewHolder holder, int position) {
         MessageModel message = messageList.get(position);
         holder.messageWho.setText(message.getWho());
+        holder.messageWho.setText(String.format("%s : ", message.getWho()));
         holder.messageText.setText(message.getText());
     }
 
     @Override
     public int getItemCount() {
         return messageList.size();
+    }
+
+    public void setMessageList(ArrayList<MessageModel> newMessages) {
+        messageList = newMessages;
+        notifyDataSetChanged();
+        Log.d(TAG, "setMessageList: updating adapter's knowledge of message list. messageList size: " + String.valueOf(messageList.size()));
     }
 
     class MessageViewHolder extends RecyclerView.ViewHolder {
@@ -51,7 +60,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
 
         MessageViewHolder(View itemView) {
             super(itemView);
-            ButterKnife.bind(itemView);
+            ButterKnife.bind(this, itemView);
             messageContainer = (LinearLayout) itemView;
         }
 

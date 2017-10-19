@@ -13,8 +13,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
@@ -66,7 +66,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     private MessageAdapter messageAdapter;
 
-    private String username;
+    private String username = "";
 
     @BindView(R.id.broadcast_switch)
     Switch broadcastSwitch;
@@ -95,6 +95,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 Log.e(TAG, "onPayloadReceived: failure. Could not convert payload to message");
             }
             messages.add(incomingMessage);
+            messageAdapter.setMessageList(messages);
         }
 
         @Override
@@ -133,6 +134,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         @Override
         public void onDisconnected(String s) {
             Log.d(TAG, "onDisconnected: connection ended");
+            resetConnections();
         }
     };
 
@@ -185,7 +187,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     @Override
     protected void onPause() {
         super.onPause();
-
+        Log.d(TAG, "onPause: activity paused");
         resetConnections();
     }
     //endregion
@@ -231,12 +233,17 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             }
         });
 
-        messageEditText.setOnKeyListener(new View.OnKeyListener() {
+        messageEditText.addTextChangedListener(new TextWatcher() {
             @Override
-            public boolean onKey(View view, int i, KeyEvent keyEvent) {
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
                 sendMessageButton.setEnabled(!messageEditText.getText().toString().isEmpty());
-                return false;
             }
+
+            @Override
+            public void afterTextChanged(Editable editable) {}
         });
 
         messageRecycler.setLayoutManager(new LinearLayoutManager(this));
@@ -336,8 +343,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         connectedEndpoints.clear();
         discoverSwitch.setChecked(false);
         broadcastSwitch.setChecked(false);
-        //todo: clear message recycler
-//        messageRecycler.setText("");
+        messages.clear();
+        messageAdapter.setMessageList(messages);
         messageEditText.setText("");
     }
 
@@ -359,6 +366,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     }
 
     private void requestName() {
+        if (!username.isEmpty()){
+            return;
+        }
+
         final AlertDialog.Builder alert = new AlertDialog.Builder(this);
         final EditText edittext = new EditText(this);
         alert.setMessage("What's your name?");
