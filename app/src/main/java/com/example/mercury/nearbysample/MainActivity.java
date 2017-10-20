@@ -1,6 +1,7 @@
 package com.example.mercury.nearbysample;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -16,6 +17,9 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
@@ -125,13 +129,27 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         @Override
         public void onPayloadTransferUpdate(String endpointId, PayloadTransferUpdate payloadTransferUpdate) {
-            Log.d(TAG, "onPayloadTransferUpdate endpointId: " + endpointId + "update: " + payloadTransferUpdate.toString());
+            String update;
+            switch (payloadTransferUpdate.getStatus()){
+                //TODO: color message based on status
+                case 1:
+                    update = "SUCCESS";
+                    break;
+                case 3:
+                    update = "IN_PROGRESS";
+                    break;
+                case 2:
+                default:
+                    update = "FAILURE";
+            }
+            Log.d(TAG, "onPayloadTransferUpdate endpointId: " + endpointId + "update: " + update);
         }
     };
 
     private final ConnectionLifecycleCallback mConnectionLifecycleCallback = new ConnectionLifecycleCallback() {
         @Override
         public void onConnectionInitiated(String endpointId, ConnectionInfo connectionInfo) {
+            //TODO: populate nav drawer with endpoints, click to accept connection
             Log.d(TAG, "onConnectionInitiated: accepting connection");
             Endpoint endpoint = new Endpoint(endpointId, connectionInfo.getEndpointName());
             pendingConnections.put(endpointId, endpoint);
@@ -279,20 +297,30 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 }
                 ArrayList endpointList = new ArrayList(connectedEndpoints.keySet());
                 Nearby.Connections.sendPayload(mGoogleApiClient, endpointList, payload);
+                messageEditText.getText().clear();
             }
         });
 
         messageEditText.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
-
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
                 sendMessageButton.setEnabled(!messageEditText.getText().toString().isEmpty());
             }
-
             @Override
             public void afterTextChanged(Editable editable) {}
+        });
+        messageEditText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View view, boolean hasFocus) {
+                InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (inputMethodManager != null){
+                    int showFlags = hasFocus ? InputMethodManager.SHOW_IMPLICIT : 0;
+                    int hideFlags = hasFocus ? 0 : InputMethodManager.HIDE_NOT_ALWAYS;
+                    inputMethodManager.toggleSoftInput(showFlags, hideFlags);
+                }
+            }
         });
 
         messageRecycler.setLayoutManager(new LinearLayoutManager(this));
@@ -312,13 +340,13 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         broadcastSwitch.setChecked(false);
         messages.clear();
         messageAdapter.setMessageList(messages);
-        messageEditText.setText("");
+        messageEditText.getText().clear();
+        messageEditText.clearFocus();
     }
     //endregion
 
     //region permissions
     private void handlePermissions() {
-        // Here, thisActivity is the current activity
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) !=
                 PackageManager.PERMISSION_GRANTED) {
 
@@ -381,20 +409,45 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             return;
         }
 
-        final AlertDialog.Builder alert = new AlertDialog.Builder(this);
-        final EditText edittext = new EditText(this);
-        alert.setMessage("What's your name?");
-        alert.setTitle("Username");
-        alert.setView(edittext);
+        final AlertDialog usernameAlert = new AlertDialog.Builder(this).create();
+        final EditText usernameEditText = new EditText(this);
 
-        alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+        usernameAlert.setMessage("What's your name?");
+        usernameAlert.setTitle("Username");
+        usernameAlert.setView(usernameEditText);
+        usernameAlert.setButton(DialogInterface.BUTTON_POSITIVE, "OK", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int whichButton) {
-                username = edittext.getText().toString();
+                username = usernameEditText.getText().toString();
                 dialog.dismiss();
             }
         });
 
-        alert.show();
+        usernameEditText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    Window window = usernameAlert.getWindow();
+                    if (window != null) {
+                        //display keyboard when alert dialog displays
+                        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                    }
+                }
+            }
+        });
+        usernameEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                //disable OK button for blank username
+                usernameAlert.getButton(DialogInterface.BUTTON_POSITIVE)
+                        .setEnabled(!usernameEditText.getText().toString().isEmpty());
+            }
+            @Override
+            public void afterTextChanged(Editable editable) {}
+        });
+
+        usernameAlert.show();
     }
     //endregion
 }

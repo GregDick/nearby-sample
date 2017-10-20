@@ -31,6 +31,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
 
     @Override
     public void onBindViewHolder(MessageViewHolder holder, int position) {
+        //TODO: color message based on sender
         MessageModel message = messageList.get(position);
         holder.messageWho.setText(message.getWho());
         holder.messageWho.setText(String.format("%s : ", message.getWho()));
