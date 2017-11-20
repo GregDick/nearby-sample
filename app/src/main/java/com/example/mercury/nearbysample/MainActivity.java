@@ -164,6 +164,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     connectedEndpoints.put(endpointId, pendingConnections.remove(endpointId));
                     showMessageBoard();
                     requestName();
+                    hideSwitches();
                     break;
 
                 case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
@@ -334,6 +335,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             Nearby.Connections.stopAllEndpoints(mGoogleApiClient);
         }
         hideMessageBoard();
+        showSwitches();
+
         pendingConnections.clear();
         connectedEndpoints.clear();
         discoverSwitch.setChecked(false);
@@ -448,6 +451,16 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         });
 
         usernameAlert.show();
+    }
+
+    private void hideSwitches() {
+        broadcastSwitch.setVisibility(View.GONE);
+        discoverSwitch.setVisibility(View.GONE);
+    }
+
+    private void showSwitches() {
+        broadcastSwitch.setVisibility(View.VISIBLE);
+        discoverSwitch.setVisibility(View.VISIBLE);
     }
     //endregion
 }
