@@ -1,5 +1,6 @@
 package com.example.mercury.nearbysample;
 
+import android.content.res.Resources;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -17,9 +18,11 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
 
     private static final String TAG = MessageAdapter.class.getSimpleName();
     private ArrayList<MessageModel> messageList;
+    private MainActivityCallback activityCallback;
 
-    MessageAdapter(ArrayList<MessageModel> messages) {
+    MessageAdapter(ArrayList<MessageModel> messages, MainActivityCallback activityCallback) {
         messageList = messages;
+        this.activityCallback = activityCallback;
     }
 
     @Override
@@ -35,6 +38,10 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         MessageModel message = messageList.get(position);
         holder.messageWho.setText(message.getWho());
         holder.messageWho.setText(String.format("%s : ", message.getWho()));
+        if (message.getWho().equals(activityCallback.getUsername())) {
+            holder.messageWho.setTextColor(activityCallback.getResources().getColor(R.color.colorAccent));
+            holder.messageWho.setBackgroundColor(activityCallback.getResources().getColor(R.color.selfMessageBackground));
+        }
         holder.messageText.setText(message.getText());
     }
 
@@ -67,4 +74,8 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
 
     }
 
+    interface MainActivityCallback{
+        String getUsername();
+        Resources getResources();
+    }
 }

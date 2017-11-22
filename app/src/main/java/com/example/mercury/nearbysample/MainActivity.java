@@ -54,7 +54,7 @@ import butterknife.ButterKnife;
 import butterknife.OnClick;
 
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener{
+        GoogleApiClient.OnConnectionFailedListener, MessageAdapter.MainActivityCallback{
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1;
@@ -70,7 +70,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     private MessageAdapter messageAdapter;
 
-    private String username = "";
+    static String username = "";
 
     @BindView(R.id.broadcast_switch)
     Switch broadcastSwitch;
@@ -325,7 +325,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         });
 
         messageRecycler.setLayoutManager(new LinearLayoutManager(this));
-        messageAdapter = new MessageAdapter(messages);
+        messageAdapter = new MessageAdapter(messages, this);
         messageRecycler.setAdapter(messageAdapter);
     }
 
@@ -461,6 +461,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private void showSwitches() {
         broadcastSwitch.setVisibility(View.VISIBLE);
         discoverSwitch.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    public String getUsername() {
+        return username;
     }
     //endregion
 }
