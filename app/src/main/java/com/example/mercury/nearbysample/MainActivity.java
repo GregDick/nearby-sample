@@ -58,19 +58,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final int MY_PERMISSIONS_REQUEST_ACCESS_COARSE_LOCATION = 1;
+
     private String SERVICE_ID = "com.example.mercury.nearbysample";
-
     private GoogleApiClient mGoogleApiClient;
-
     private Map<String, Endpoint> pendingConnections = new HashMap<>();
-
     private Map<String, Endpoint> connectedEndpoints = new HashMap<>();
-
     private ArrayList<MessageModel> messages = new ArrayList<>();
-
     private MessageAdapter messageAdapter;
-
-    static String username = "";
+    private String username = "";
+    private AlertDialog usernameAlert;
 
     @BindView(R.id.broadcast_switch)
     Switch broadcastSwitch;
@@ -345,6 +341,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         messageAdapter.setMessageList(messages);
         messageEditText.getText().clear();
         messageEditText.clearFocus();
+        if (usernameAlert != null) {
+            usernameAlert.dismiss();
+        }
     }
     //endregion
 
@@ -412,7 +411,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             return;
         }
 
-        final AlertDialog usernameAlert = new AlertDialog.Builder(this).create();
+        usernameAlert = new AlertDialog.Builder(this).create();
         final EditText usernameEditText = new EditText(this);
 
         usernameAlert.setMessage("What's your name?");
