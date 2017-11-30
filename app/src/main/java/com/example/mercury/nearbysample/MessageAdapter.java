@@ -36,11 +36,18 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     public void onBindViewHolder(MessageViewHolder holder, int position) {
         //TODO: color message based on sender
         MessageModel message = messageList.get(position);
-        holder.messageWho.setText(message.getWho());
-        holder.messageWho.setText(String.format("%s : ", message.getWho()));
         if (message.getWho().equals(activityCallback.getUsername())) {
-            holder.messageWho.setTextColor(activityCallback.getResources().getColor(R.color.colorAccent));
-            holder.messageWho.setBackgroundColor(activityCallback.getResources().getColor(R.color.selfMessageBackground));
+            holder.messageText.setBackground(activityCallback.getResources().getDrawable(R.drawable.self_message_background));
+            holder.messageContainer.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+            //these calls are necessary on older OS for some reason
+            holder.messageWho.setText(null);
+        }
+        else {
+            holder.messageWho.setText(String.format("%s : ", message.getWho()));
+            //these calls are necessary on older OS for some reason
+            holder.messageWho.setTextColor(activityCallback.getResources().getColor(R.color.colorPrimary));
+            holder.messageText.setBackground(null);
+            holder.messageContainer.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         }
         holder.messageText.setText(message.getText());
     }
@@ -50,7 +57,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         return messageList.size();
     }
 
-    public void setMessageList(ArrayList<MessageModel> newMessages) {
+    void setMessageList(ArrayList<MessageModel> newMessages) {
         messageList = newMessages;
         notifyDataSetChanged();
         Log.d(TAG, "setMessageList: updating adapter's knowledge of message list. messageList size: " + String.valueOf(messageList.size()));

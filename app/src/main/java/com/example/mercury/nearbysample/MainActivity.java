@@ -128,13 +128,13 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             String update;
             switch (payloadTransferUpdate.getStatus()){
                 //TODO: color message based on status
-                case 1:
+                case PayloadTransferUpdate.Status.SUCCESS:
                     update = "SUCCESS";
                     break;
-                case 3:
+                case PayloadTransferUpdate.Status.IN_PROGRESS:
                     update = "IN_PROGRESS";
                     break;
-                case 2:
+                case PayloadTransferUpdate.Status.FAILURE:
                 default:
                     update = "FAILURE";
             }
@@ -244,7 +244,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     @Override
                     public void onResult(@NonNull Status status) {
                         if (status.isSuccess()){
-                            Log.d(TAG, "startDiascovering onSuccess: " + status.toString());
+                            Log.d(TAG, "startDiscovering onSuccess: " + status.toString());
                         }
                         else {
                             Log.e(TAG, "startDiscovering onFailure: " + status.getStatusMessage());
@@ -404,6 +404,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private void displayMessage(MessageModel messageModel) {
         messages.add(messageModel);
         messageAdapter.setMessageList(messages);
+        messageRecycler.scrollToPosition(messageAdapter.getItemCount() - 1);
     }
 
     private void requestName() {

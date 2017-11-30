@@ -20,6 +20,7 @@
 
     <Button
         android:id="@+id/reset_button"
+        android:layout_marginLeft="10dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="reset connections"/>
@@ -52,6 +53,8 @@
         android:id="@+id/message_recycler"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
         android:visibility="invisible"/>
 
 </LinearLayout>
