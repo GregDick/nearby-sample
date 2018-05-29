@@ -13,8 +13,13 @@ import java.util.ArrayList
 
 import butterknife.BindView
 import butterknife.ButterKnife
+import com.example.mercury.nearbysample.R.layout.message_item
+import kotlinx.android.synthetic.main.message_item.*
+import kotlinx.android.synthetic.main.message_item.message_text
 
-open class MessageAdapter constructor(private var messageList: ArrayList<MessageModel>?, private val activityCallback: MainActivityCallback) : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() {
+
+
+open class MessageAdapter constructor(private var messageList: ArrayList<MessageModel>, private val activityCallback: MainActivityCallback) : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
         val v = LayoutInflater.from(parent.context).inflate(R.layout.message_item, parent, false)
@@ -24,24 +29,24 @@ open class MessageAdapter constructor(private var messageList: ArrayList<Message
 
     override fun onBindViewHolder(holder: MessageViewHolder, position: Int) {
         //TODO: color message based on sender
-        val message = messageList!![position]
+        val message = messageList[position]
         if (message.who == activityCallback.username) {
-            holder.messageText!!.background = activityCallback.resources.getDrawable(R.drawable.self_message_background)
+            message_text.background = activityCallback.resources.getDrawable(R.drawable.self_message_background)
             holder.messageContainer.layoutDirection = View.LAYOUT_DIRECTION_RTL
             //these calls are necessary on older OS for some reason
-            holder.messageWho!!.text = null
+            message_who.text = null
         } else {
-            holder.messageWho!!.text = String.format("%s : ", message.who)
+            message_who.text = String.format("%s : ", message.who)
             //these calls are necessary on older OS for some reason
-            holder.messageWho!!.setTextColor(activityCallback.resources.getColor(R.color.colorPrimary))
-            holder.messageText!!.background = null
+            message_who.setTextColor(activityCallback.resources.getColor(R.color.colorPrimary))
+            message_text.background = null
             holder.messageContainer.layoutDirection = View.LAYOUT_DIRECTION_LTR
         }
-        holder.messageText!!.text = message.text
+        message_text.text = message.text
     }
 
     override fun getItemCount(): Int {
-        return messageList!!.size
+        return messageList.size
     }
 
     fun setMessageList(newMessages: ArrayList<MessageModel>) {
@@ -51,13 +56,6 @@ open class MessageAdapter constructor(private var messageList: ArrayList<Message
     }
 
     inner class MessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-
-        @BindView(R.id.message_who)
-        var messageWho: TextView? = null
-
-        @BindView(R.id.message_text)
-        var messageText: TextView? = null
-
         var messageContainer: LinearLayout
 
         init {

@@ -116,9 +116,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         @Override
         public void onPayloadReceived(String endpointId, Payload payload) {
             Log.d(TAG, "onPayloadReceived endpointId: " + endpointId);
-            MessageModel incomingMessage = MessageModel.empty();
+            MessageModel incomingMessage = MessageModel.Companion.empty();
             try {
-                incomingMessage = MessageModel.convertFromBytes(payload.asBytes());
+                incomingMessage = MessageModel.Companion.convertFromBytes(payload.asBytes());
             } catch (IOException | ClassNotFoundException e) {
                 Log.e(TAG, "onPayloadReceived: failure. Could not convert payload to message");
             }
@@ -290,7 +290,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 displayMessage(messageModel);
                 Payload payload = null;
                 try {
-                    payload = Payload.fromBytes(MessageModel.convertToBytes(messageModel));
+                    payload = Payload.fromBytes(MessageModel.Companion.convertToBytes(messageModel));
                 } catch (IOException e) {
                     Log.e(TAG, "Send message failure: Could not convert message to bytes");
                 }
