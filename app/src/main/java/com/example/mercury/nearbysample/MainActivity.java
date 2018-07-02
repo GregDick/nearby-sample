@@ -23,6 +23,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.Switch;
 
 import com.example.mercury.nearbysample.MessageAdapter.MainActivityCallback;
@@ -69,6 +70,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private MessageAdapter messageAdapter;
     private String username = "";
     private AlertDialog usernameAlert;
+
+    @BindView(R.id.container_view)
+    LinearLayout containerView;
 
     @BindView(R.id.broadcast_switch)
     Switch broadcastSwitch;
@@ -323,7 +327,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         });
 
         messageRecycler.setLayoutManager(new LinearLayoutManager(this));
-        messageAdapter = new MessageAdapter(messages, this);
+        messageAdapter = new MessageAdapter(messages, this, containerView);
         messageRecycler.setAdapter(messageAdapter);
     }
 

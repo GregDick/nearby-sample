@@ -13,13 +13,19 @@ import java.util.ArrayList
 
 import butterknife.BindView
 import butterknife.ButterKnife
+import com.example.mercury.nearbysample.R.id.message_text
+import com.example.mercury.nearbysample.R.id.message_who
 import com.example.mercury.nearbysample.R.layout.message_item
+import kotlinx.android.extensions.LayoutContainer
 import kotlinx.android.synthetic.main.message_item.*
 import kotlinx.android.synthetic.main.message_item.message_text
 
 
 
-open class MessageAdapter constructor(private var messageList: ArrayList<MessageModel>, private val activityCallback: MainActivityCallback) : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() {
+open class MessageAdapter constructor(private var messageList: ArrayList<MessageModel>,
+                                      private val activityCallback: MainActivityCallback,
+                                      override val containerView: View?)
+    : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>(), LayoutContainer {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
         val v = LayoutInflater.from(parent.context).inflate(R.layout.message_item, parent, false)
